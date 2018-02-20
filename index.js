@@ -1,4 +1,5 @@
 var fs     = require('fs');
+var path   = require('path');
 var crypto = require('crypto');
 var xml2js = require('xml2js');
 var gm     = require('gm');
@@ -128,6 +129,40 @@ var calculateHash = function(filepath) {
 };
 
 /**
+ * Create a directory. If parent directory dont exists, this will be created to.
+ *
+ * @return {String} with the created path
+ */
+var mkdirRecursive = function(dirPath) {
+  var sep = path.sep;
+  var array = dirPath.split(sep);
+  array.splice(-1, 1); // remove file name
+  var fullPath = array.join(path.sep);
+    
+  if (!fs.existsSync(fullPath)) {
+    array.reduce(function(parent, child) {
+      if (parent && !fs.existsSync(parent)) {
+        try {
+          fs.mkdirSync(path.resolve(parent));
+        } catch(error) {
+          console.log(error);
+        }
+      }
+      var finalPath = path.resolve(parent, child);
+      if (!fs.existsSync(finalPath)) {
+        try {
+          fs.mkdirSync(finalPath);
+        } catch(error) {
+          console.error(error);
+        }
+      }
+      return finalPath;
+    });
+  }
+  return fullPath;
+};
+
+/**
  * Resizes and creates a new splashscreen in the platform's folder.
  *
  * @param  {Object} platform
@@ -142,6 +177,8 @@ var generateSplash= function (platform, splash) {
   var file = platform.splashPaths + splash.name;
   var max;
 
+  mkdirRecursive(file);
+
   // calculate orientation constraint
   if (height > width) {
     constraint = 'height';
@@ -151,7 +188,7 @@ var generateSplash= function (platform, splash) {
     max = width;
   }
 
-  calculateHash(file).then(function(hash) {
+  calculateHash(settings.SPLASH_FILE).then(function(hash) {
     hashes.push(hash);
     // output resized file
     gm(settings.SPLASH_FILE)
